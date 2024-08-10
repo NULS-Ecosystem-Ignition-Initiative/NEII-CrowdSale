@@ -32,7 +32,7 @@ public class CrowdSale extends ReentrancyGuard implements Contract{
     /** 100 NULS
      *   @dev Min required to deposit in aiNULS is 100 NULS
      */
-    private static final BigInteger ONE_NULS = BigInteger.valueOf(100000000L);
+    private static final BigInteger ONE_NULS     = BigInteger.valueOf(100000000L);
     private static final BigInteger BASIS_POINTS = BigInteger.valueOf(10000);
 
     public Address depositCtr;
@@ -43,17 +43,32 @@ public class CrowdSale extends ReentrancyGuard implements Contract{
 
     public Boolean paused;
 
+    public BigInteger priceInNuls;
+    public BigInteger raised;
+
     //User Balance
     public Map<Address, BigInteger> userBalance  = new HashMap<>();
     public Map<Address, Boolean>    projectAdmin = new HashMap<>();
 
     //--------------------------------------------------------------------
     //Initialize Contract
-    public CrowdSale(Required String name, @Required String symbol, @Required BigInteger initialAmount, @Required int decimals, Address aiNULSDepositContract_, Address treasury_, Address aiNULS_, Address admin_) {
+    public CrowdSale(@Required String name,
+                     @Required String symbol,
+                     @Required BigInteger initialAmount,
+                     @Required int decimals,
+                     @Required Address aiNULSDepositContract_,
+                     @Required Address treasury_,
+                     @Required Address aiNULS_,
+                     @Required Address admin_
+                     @Required BigInteger priceInNULS_
+    ) {
+
 
         treasury = treasury_;
         projectAdmin.put(admin_, true);
         paused = false;
+        priceInNuls = priceInNULS_;
+        raised = BigInteger.ZERO;
 
         token = Utils.deploy(new String[]{ "token" + BigInteger.valueOf(Block.timestamp()).toString() + symbol, "token"}, new Address("NULSd6Hgt3DMt33PKq1hHkFCRbQmbpFtrc4fi"), new String[]{name, symbol, initialAmount.toString(), String.valueOf(decimals)});
 
@@ -149,43 +164,26 @@ public class CrowdSale extends ReentrancyGuard implements Contract{
         String[][] args = new String[][]{new String[]{Msg.sender().toString()}, new String[]{amountToLock.toString()}};
         aiNULSDepositContract.callWithReturnValue("lockDeposit", "", args, BigInteger.ZERO);
 
+        BigInteger payout = amount * priceInNuls;
+
+        raised = raised.add(payout);
+
         if(userBalance.get(onBehalfOf) == null){
 
-            userBalance.put(onBehalfOf, amount);
+            userBalance.put(onBehalfOf, payout);
 
         }else{
 
-            userBalance.put(onBehalfOf, userBalance.get(onBehalfOf).add(amount));
+            userBalance.put(onBehalfOf, userBalance.get(onBehalfOf).add(payout));
 
         }
 
-
-
-        setClosure();
-
-    }
-
-    public void claimRewards(Address receiver){
-
-        setEntrance();
-
-        notPaused();
-
-        onlyAdmin();
-
-        BigInteger stakedInAiNULS = getBalAINULS(Msg.address());
-
-        withdrawInAINULS();
-
-        stakeInAINULS(stakedInAiNULS);
-
-        BigInteger balNow = Msg.address().totalBalance();
-
-        receiver.transfer(balNow);
+        safeTransfer(token, onBehalfOf, payout);
 
         setClosure();
 
     }
+
 
     public void withdrawAfterLock(){
 
