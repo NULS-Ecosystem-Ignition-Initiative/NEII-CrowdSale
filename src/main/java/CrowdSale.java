@@ -36,15 +36,15 @@ public class CrowdSale extends ReentrancyGuard implements Contract{
     private static final BigInteger BASIS_POINTS = BigInteger.valueOf(10000);
 
     public Address depositCtr;
-
-    public Address treasury;
-
-    public Address token;
+    public Address treasury; // Address that will receive the project NULS
+    public Address token; // Project Token
 
     public Boolean paused;
 
     public BigInteger priceInNuls;
     public BigInteger raised;
+    public BigInteger toRaiseNuls;
+    public BigInteger BigInteger projectShareFromRaised;
 
     //User Balance
     public Map<Address, BigInteger> userBalance  = new HashMap<>();
@@ -60,7 +60,9 @@ public class CrowdSale extends ReentrancyGuard implements Contract{
                      @Required Address treasury_,
                      @Required Address aiNULS_,
                      @Required Address admin_
-                     @Required BigInteger priceInNULS_
+                     @Required BigInteger priceInNULS_,
+                     @Required BigInteger toRaiseNULS_,
+                     @Required BigInteger projectShareFromRaised_
     ) {
 
 
@@ -69,12 +71,24 @@ public class CrowdSale extends ReentrancyGuard implements Contract{
         paused = false;
         priceInNuls = priceInNULS_;
         raised = BigInteger.ZERO;
+        toRaiseNuls = toRaiseNULS_;
+        projectShareFromRaised = projectShareFromRaised_;
 
         token = Utils.deploy(new String[]{ "token" + BigInteger.valueOf(Block.timestamp()).toString() + symbol, "token"}, new Address("NULSd6Hgt3DMt33PKq1hHkFCRbQmbpFtrc4fi"), new String[]{name, symbol, initialAmount.toString(), String.valueOf(decimals)});
 
     }
 
     /** VIEW FUNCTIONS */
+
+    /**
+     * @notice Get aiNULS asset address
+     *
+     * @return aiNULS Token Contract Address
+     */
+    @View
+    public Address getProjectToken() {
+        return token;
+    }
 
     /**
      * @notice Get aiNULS asset address
@@ -153,9 +167,17 @@ public class CrowdSale extends ReentrancyGuard implements Contract{
         notPaused();
 
         //Require that nuls sent match the amount to lock
-        require(Msg.value().compareTo(amount)  >= 0, "Invalid Amount sent");
+        require(Msg.value().compareTo(amount) >= 0 && amount.compareTo(ONE_NULS) >= 0, "Invalid Amount sent");
 
-        BigInteger projectGain = amount.multipliedBy(BigInteger.valueOf(7750)).dividedBy(BASIS_POINTS);
+        //if exceeds raise amount return if higher than 1 NULS
+        if(raised.add(amount).compareTo(toRaiseNuls) > 0 && toRaiseNuls.subtract(raised).compareTo(ONE_NULS) >= 0){
+            Msg.sender().transfer(amount.subtract(toRaiseNuls.subtract(raised)));
+        }
+
+        //Reject amount over raised and consider only what is left
+        amount = (raised.add(amount).compareTo(toRaiseNuls) <= 0) ? amount : toRaiseNuls.subtract(raised)
+
+        BigInteger projectGain = amount.multipliedBy(projectShareFromRaised).dividedBy(BASIS_POINTS);
 
         BigInteger amountToLock = amount.subtract(projectGain);
 
@@ -182,41 +204,6 @@ public class CrowdSale extends ReentrancyGuard implements Contract{
 
         setClosure();
 
-    }
-
-
-    public void withdrawAfterLock(){
-
-        setEntrance();
-
-        notPaused();
-
-        require(userLockTime.get(Msg.sender())!= null
-                && userLockTime.get(Msg.sender()).compareTo(BigInteger.valueOf(Block.timestamp())) <= 0,
-                "Lock still active"
-        );
-
-        //Require that user has funds to withdraw
-        if(userBalance.get(Msg.sender()) != null && userBalance.get(Msg.sender()).compareTo(BigInteger.ZERO) > 0){
-
-            BigInteger balToWithdraw = userBalance.get(Msg.sender());
-
-            BigInteger stakedInAiNULS = getBalAINULS(Msg.address());
-
-            if((stakedInAiNULS.subtract(balToWithdraw)).compareTo(BigInteger.ZERO) >= 0) {
-
-                withdrawInAINULS();
-
-                stakeInAINULS(stakedInAiNULS.subtract(balToWithdraw));
-
-                userBalance.put(Msg.sender(), BigInteger.ZERO);
-            }
-
-        }else{
-            require(false, "No Amount Deposited");
-        }
-
-        setClosure();
     }
 
     //--------------------------------------------------------------------
