@@ -44,7 +44,7 @@ public class CrowdSale extends ReentrancyGuard implements Contract{
     public BigInteger priceInNuls;
     public BigInteger raised;
     public BigInteger toRaiseNuls;
-    public BigInteger BigInteger projectShareFromRaised;
+    public BigInteger projectShareFromRaised;
 
     //User Balance
     public Map<Address, BigInteger> userBalance  = new HashMap<>();
@@ -59,7 +59,7 @@ public class CrowdSale extends ReentrancyGuard implements Contract{
                      @Required Address aiNULSDepositContract_,
                      @Required Address treasury_,
                      @Required Address aiNULS_,
-                     @Required Address admin_
+                     @Required Address admin_,
                      @Required BigInteger priceInNULS_,
                      @Required BigInteger toRaiseNULS_,
                      @Required BigInteger projectShareFromRaised_
@@ -73,9 +73,10 @@ public class CrowdSale extends ReentrancyGuard implements Contract{
         raised = BigInteger.ZERO;
         toRaiseNuls = toRaiseNULS_;
         projectShareFromRaised = projectShareFromRaised_;
+        depositCtr = aiNULSDepositContract_;
 
-        token = Utils.deploy(new String[]{ "token" + BigInteger.valueOf(Block.timestamp()).toString() + symbol, "token"}, new Address("NULSd6Hgt3DMt33PKq1hHkFCRbQmbpFtrc4fi"), new String[]{name, symbol, initialAmount.toString(), String.valueOf(decimals)});
-
+        String preToken = Utils.deploy(new String[]{ "token" + BigInteger.valueOf(Block.timestamp()).toString() + symbol, "token"}, new Address("NULSd6Hgt3DMt33PKq1hHkFCRbQmbpFtrc4fi"), new String[]{name, symbol, initialAmount.toString(), String.valueOf(decimals)});
+        token = new Address(preToken);
     }
 
     /** VIEW FUNCTIONS */
@@ -90,15 +91,6 @@ public class CrowdSale extends ReentrancyGuard implements Contract{
         return token;
     }
 
-    /**
-     * @notice Get aiNULS asset address
-     *
-     * @return aiNULS Token Contract Address
-     */
-    @View
-    public Address getAINULSCtrAddr() {
-        return aiNULS;
-    }
 
     /**
      * @notice Verify if Address is admin
@@ -124,17 +116,6 @@ public class CrowdSale extends ReentrancyGuard implements Contract{
         return userBalance.get(addr);
     }
 
-    /**
-     * @notice Get user lock time ending
-     *
-     * @return User lock time ending
-     */
-    @View
-    public BigInteger getUserLockTime(Address addr){
-        if(userLockTime.get(addr) == null)
-            return BigInteger.ZERO;
-        return userLockTime.get(addr);
-    }
 
     @View
     public Boolean isPaused(){
@@ -175,18 +156,18 @@ public class CrowdSale extends ReentrancyGuard implements Contract{
         }
 
         //Reject amount over raised and consider only what is left
-        amount = (raised.add(amount).compareTo(toRaiseNuls) <= 0) ? amount : toRaiseNuls.subtract(raised)
+        amount = (raised.add(amount).compareTo(toRaiseNuls) <= 0) ? amount : toRaiseNuls.subtract(raised);
 
-        BigInteger projectGain = amount.multipliedBy(projectShareFromRaised).dividedBy(BASIS_POINTS);
+        BigInteger projectGain = amount.multiply(projectShareFromRaised).divide(BASIS_POINTS);
 
         BigInteger amountToLock = amount.subtract(projectGain);
 
         treasury.transfer(projectGain);
 
         String[][] args = new String[][]{new String[]{Msg.sender().toString()}, new String[]{amountToLock.toString()}};
-        aiNULSDepositContract.callWithReturnValue("lockDeposit", "", args, BigInteger.ZERO);
+        depositCtr.callWithReturnValue("lockDeposit", "", args, amountToLock);
 
-        BigInteger payout = amount * priceInNuls;
+        BigInteger payout = amount.multiply(priceInNuls);
 
         raised = raised.add(payout);
 
@@ -208,16 +189,6 @@ public class CrowdSale extends ReentrancyGuard implements Contract{
 
     //--------------------------------------------------------------------
     /** MUTABLE OWNER FUNCTIONS */
-
-    public void setAiNULSDepositContract(Address newDepositCtr){
-        onlyAdmin();
-        aiNULSDepositContract = newDepositCtr;
-    }
-
-    public void setAiNULS(Address newAiNULS){
-        onlyAdmin();
-        aiNULS = newAiNULS;
-    }
 
     public void addAdmin(Address newAdmin){
 
@@ -261,14 +232,14 @@ public class CrowdSale extends ReentrancyGuard implements Contract{
 
     private BigInteger getBalAINULS(@Required Address owner){
         String[][] args = new String[][]{new String[]{owner.toString()}};
-        BigInteger b = new BigInteger(aiNULSDepositContract.callWithReturnValue("balanceOf", "", args, BigInteger.ZERO));
+        BigInteger b = new BigInteger(depositCtr.callWithReturnValue("balanceOf", "", args, BigInteger.ZERO));
         return b;
     }
 
     private void safeTransfer(@Required Address token, @Required Address recipient, @Required BigInteger amount){
         String[][] argsM = new String[][]{new String[]{recipient.toString()}, new String[]{amount.toString()}};
         boolean b = new Boolean(token.callWithReturnValue("transfer", "", argsM, BigInteger.ZERO));
-        require(b, "NulswapLendingV1: Failed to transfer");
+        require(b, "NEII-V1: Failed to transfer");
     }
 
 }
