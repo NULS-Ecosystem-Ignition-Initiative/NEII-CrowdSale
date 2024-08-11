@@ -58,7 +58,6 @@ public class CrowdSale extends ReentrancyGuard implements Contract{
                      @Required int decimals,
                      @Required Address aiNULSDepositContract_,
                      @Required Address treasury_,
-                     @Required Address aiNULS_,
                      @Required Address admin_,
                      @Required BigInteger priceInNULS_,
                      @Required BigInteger toRaiseNULS_,
@@ -114,6 +113,16 @@ public class CrowdSale extends ReentrancyGuard implements Contract{
         if(userBalance.get(addr) == null)
             return BigInteger.ZERO;
         return userBalance.get(addr);
+    }
+
+    /**
+     * @notice Get user balance deposited in lock
+     *
+     * @return User Balance
+     */
+    @View
+    public BigInteger percentageSold(){
+        return raised.multiply(BASIS_POINTS).divide(toRaiseNuls);
     }
 
 
