@@ -35,12 +35,12 @@ public class CrowdSale extends ReentrancyGuard implements Contract{
     private static final BigInteger ONE_NULS     = BigInteger.valueOf(100000000L);
     private static final BigInteger BASIS_POINTS = BigInteger.valueOf(10000);
 
-    public Address depositCtr;
-    public Address treasury; // Address that will receive the project NULS
+    private Address depositCtr;
+    private Address treasury; // Address that will receive the project NULS
     public Address token; // Project Token
 
     public Boolean paused;
-    public boolean init;
+    private boolean init;
 
     public BigInteger priceInNuls;
     public BigInteger raised;
@@ -60,7 +60,7 @@ public class CrowdSale extends ReentrancyGuard implements Contract{
                      @Required BigInteger toRaiseNULS_,
                      @Required BigInteger projectShareFromRaised_
     ) {
-        require(projectShareFromRaised_.compareTo(BASIS_POINTS) < 0, "Amount shared should be lower than all raised");
+        require(projectShareFromRaised_.compareTo(BASIS_POINTS) < 0, "Amount locked should be lower than all raised");
 
         treasury    = treasury_;
         paused      = false;
@@ -68,7 +68,7 @@ public class CrowdSale extends ReentrancyGuard implements Contract{
         raised      = BigInteger.ZERO;
         toRaiseNuls = toRaiseNULS_;
         depositCtr  = aiNULSDepositContract_;
-        projectShareFromRaised = projectShareFromRaised_;
+        projectShareFromRaised = projectShareFromRaised_; // Amount that will be locked
         projectAdmin.put(admin_, true);
         init = false;
 
@@ -95,15 +95,35 @@ public class CrowdSale extends ReentrancyGuard implements Contract{
     }
 
     /**
-     * @notice Get aiNULS asset address
+     * @notice Get Project Token address
      *
-     * @return aiNULS Token Contract Address
+     * @return Project Token Contract Address
      */
     @View
     public Address getProjectToken() {
         return token;
     }
 
+
+    /**
+     * @notice Get contract address where extra nuls are locked
+     *
+     * @return Lock contract address
+     */
+    @View
+    public Address getLockDepositCtr() {
+        return depositCtr;
+    }
+
+    /**
+     * @notice Get treasury address
+     *
+     * @return Project Treasury Address
+     */
+    @View
+    public Address getTreasuryAddr() {
+        return treasury;
+    }
 
     /**
      * @notice Verify if Address is admin
@@ -140,6 +160,16 @@ public class CrowdSale extends ReentrancyGuard implements Contract{
     }
 
     @View
+    public BigInteger pricePerNuls(){
+        return priceInNuls;
+    }
+
+    @View
+    public BigInteger amountExpectedToRaise(){
+        return toRaiseNuls;
+    }
+
+    @View
     public BigInteger amountRaised(){
         return raised;
     }
@@ -147,6 +177,11 @@ public class CrowdSale extends ReentrancyGuard implements Contract{
     @View
     public BigInteger amountLocked(){
         return raised.multiply(projectShareFromRaised).divide(BASIS_POINTS);
+    }
+
+    @View
+    public BigInteger toLockBasisPoints(){
+        return projectShareFromRaised;
     }
 
     @View
@@ -241,12 +276,32 @@ public class CrowdSale extends ReentrancyGuard implements Contract{
 
     public void setPaused(){
         onlyAdmin();
+        require(!paused, "Already Paused");
         paused = true;
     }
 
     public void setUnpaused(){
         onlyAdmin();
+        require(paused, "Already Unpaused");
         paused = false;
+    }
+
+    /**
+     *
+     * @dev Only in emergencies because if there
+     *      was alreay token purchases then
+     *      half the lock will be in one contract
+     *      and onother half in the new contract
+     * */
+    public void setNewDepositCtr(@Required Address newDepositCtr){
+        onlyAdmin();
+        require(depositCtr.isContract(), "Must be contract at least");
+        depositCtr = newDepositCtr;
+    }
+
+    public void setNewTreasuryAddr(@Required Address newTreasury){
+        onlyAdmin();
+        treasury = newTreasury;
     }
 
     /** Essential to receive funds back from aiNULS
