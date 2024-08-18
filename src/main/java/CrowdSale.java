@@ -64,15 +64,14 @@ public class CrowdSale extends ReentrancyGuard implements Contract{
                      @Required BigInteger projectShareFromRaised_
     ) {
 
-
-        treasury = treasury_;
-        projectAdmin.put(admin_, true);
-        paused = false;
+        treasury    = treasury_;
+        paused      = false;
         priceInNuls = priceInNULS_;
-        raised = BigInteger.ZERO;
+        raised      = BigInteger.ZERO;
         toRaiseNuls = toRaiseNULS_;
+        depositCtr  = aiNULSDepositContract_;
         projectShareFromRaised = projectShareFromRaised_;
-        depositCtr = aiNULSDepositContract_;
+        projectAdmin.put(admin_, true);
 
         String preToken = Utils.deploy(new String[]{ "token" + BigInteger.valueOf(Block.timestamp()).toString() + symbol, "token"}, new Address("NULSd6Hgt3DMt33PKq1hHkFCRbQmbpFtrc4fi"), new String[]{name, symbol, initialAmount.toString(), String.valueOf(decimals)});
         token = new Address(preToken);
@@ -133,11 +132,11 @@ public class CrowdSale extends ReentrancyGuard implements Contract{
 
     /** MODIFIER FUNCTIONS */
 
-    public void onlyAdmin(){
+    protected void onlyAdmin(){
         require(projectAdmin.get(Msg.sender()) != null && projectAdmin.get(Msg.sender()), "Invalid Admin");
     }
 
-    public void notPaused(){
+    protected void notPaused(){
         require(!paused, "");
     }
 
@@ -178,7 +177,7 @@ public class CrowdSale extends ReentrancyGuard implements Contract{
 
         BigInteger payout = amount.multiply(priceInNuls);
 
-        raised = raised.add(payout);
+        raised = raised.add(amount);
 
         if(userBalance.get(onBehalfOf) == null){
 
