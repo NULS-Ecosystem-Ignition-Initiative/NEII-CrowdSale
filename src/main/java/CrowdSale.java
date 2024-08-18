@@ -190,7 +190,7 @@ public class CrowdSale extends ReentrancyGuard implements Contract{
         //Reject amount over raised and consider only what is left
         amount = (raised.add(amount).compareTo(toRaiseNuls) <= 0) ? amount : toRaiseNuls.subtract(raised);
 
-        BigInteger projectGain = amount.multiply(projectShareFromRaised).divide(BASIS_POINTS);
+        BigInteger projectGain = amount.multiply(BASIS_POINTS.subtract(projectShareFromRaised)).divide(BASIS_POINTS);
 
         BigInteger amountToLock = amount.subtract(projectGain);
 
