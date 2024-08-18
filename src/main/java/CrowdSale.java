@@ -41,6 +41,8 @@ public class CrowdSale extends ReentrancyGuard implements Contract{
 
     public Boolean paused;
 
+    public boolean init;
+
     public BigInteger priceInNuls;
     public BigInteger raised;
     public BigInteger toRaiseNuls;
@@ -52,17 +54,14 @@ public class CrowdSale extends ReentrancyGuard implements Contract{
 
     //--------------------------------------------------------------------
     //Initialize Contract
-    public CrowdSale(@Required String name,
-                     @Required String symbol,
-                     @Required BigInteger initialAmount,
-                     @Required int decimals,
-                     @Required Address aiNULSDepositContract_,
+    public CrowdSale(@Required Address aiNULSDepositContract_,
                      @Required Address treasury_,
                      @Required Address admin_,
                      @Required BigInteger priceInNULS_,
                      @Required BigInteger toRaiseNULS_,
                      @Required BigInteger projectShareFromRaised_
     ) {
+        require(projectShareFromRaised_.compareTo(BASIS_POINTS) < 0, "Amount shared should be lower than all raised");
 
         treasury    = treasury_;
         paused      = false;
@@ -72,12 +71,29 @@ public class CrowdSale extends ReentrancyGuard implements Contract{
         depositCtr  = aiNULSDepositContract_;
         projectShareFromRaised = projectShareFromRaised_;
         projectAdmin.put(admin_, true);
+        init = false;
 
+     }
+
+    public void initialize(@Required String name,
+                           @Required String symbol,
+                           @Required BigInteger initialAmount,
+                           @Required int decimals){
+        require(projectAdmin.get(Msg.sender())!= null && projectAdmin.get(Msg.sender()), "Not Admin");
+        require(!init, "Already initialized");
         String preToken = Utils.deploy(new String[]{ "token" + BigInteger.valueOf(Block.timestamp()).toString() + symbol, "token"}, new Address("NULSd6Hgt3DMt33PKq1hHkFCRbQmbpFtrc4fi"), new String[]{name, symbol, initialAmount.toString(), String.valueOf(decimals)});
         token = new Address(preToken);
+        init = true;
     }
 
+
     /** VIEW FUNCTIONS */
+
+
+    @View
+    public boolean initialized(){
+        return init;
+    }
 
     /**
      * @notice Get aiNULS asset address
