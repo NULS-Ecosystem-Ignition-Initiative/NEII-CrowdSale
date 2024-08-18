@@ -40,7 +40,6 @@ public class CrowdSale extends ReentrancyGuard implements Contract{
     public Address token; // Project Token
 
     public Boolean paused;
-
     public boolean init;
 
     public BigInteger priceInNuls;
@@ -140,6 +139,15 @@ public class CrowdSale extends ReentrancyGuard implements Contract{
         return raised.multiply(BASIS_POINTS).divide(toRaiseNuls);
     }
 
+    @View
+    public BigInteger amountRaised(){
+        return raised;
+    }
+
+    @View
+    public BigInteger amountLocked(){
+        return raised.multiply(projectShareFromRaised).divide(BASIS_POINTS);
+    }
 
     @View
     public Boolean isPaused(){
