@@ -181,11 +181,11 @@ public class CrowdSale extends ReentrancyGuard implements Contract{
 
         if(userBalance.get(onBehalfOf) == null){
 
-            userBalance.put(onBehalfOf, payout);
+            userBalance.put(onBehalfOf, amount);
 
         }else{
 
-            userBalance.put(onBehalfOf, userBalance.get(onBehalfOf).add(payout));
+            userBalance.put(onBehalfOf, userBalance.get(onBehalfOf).add(amount));
 
         }
 
