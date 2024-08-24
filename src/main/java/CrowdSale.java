@@ -35,9 +35,9 @@ public class CrowdSale extends ReentrancyGuard implements Contract{
     private static final BigInteger ONE_NULS     = BigInteger.valueOf(100000000L);
     private static final BigInteger BASIS_POINTS = BigInteger.valueOf(10000);
 
-    private Address depositCtr;
-    private Address treasury; // Address that will receive the project NULS
-    public Address token; // Project Token
+    private Address depositCtr; // Lock contract where the NULS will be locked
+    private Address treasury;   // Address that will receive the project NULS
+    public Address token;       // Project Token
 
     public Boolean paused;
     private boolean init;
@@ -78,11 +78,15 @@ public class CrowdSale extends ReentrancyGuard implements Contract{
                            @Required String symbol,
                            @Required BigInteger initialAmount,
                            @Required int decimals){
+
+        // Require that initialiation is done by an admin and is not yet initialized
         require(projectAdmin.get(Msg.sender())!= null && projectAdmin.get(Msg.sender()), "Not Admin");
         require(!init, "Already initialized");
+
+        // Create token, update token in contract and initialize contract
         String preToken = Utils.deploy(new String[]{ "token" + BigInteger.valueOf(Block.timestamp()).toString() + symbol, "token"}, new Address("NULSd6Hgt3DMt33PKq1hHkFCRbQmbpFtrc4fi"), new String[]{name, symbol, initialAmount.toString(), String.valueOf(decimals)});
-        token = new Address(preToken);
-        init = true;
+        token           = new Address(preToken);
+        init            = true;
     }
 
 
@@ -302,6 +306,11 @@ public class CrowdSale extends ReentrancyGuard implements Contract{
     public void setNewTreasuryAddr(@Required Address newTreasury){
         onlyAdmin();
         treasury = newTreasury;
+    }
+
+    public void transferTokenExcess(@Required Address recipient, BigInteger val){
+        onlyAdmin();
+        safeTransfer(token, recipient, val);
     }
 
     /** Essential to receive funds back from aiNULS
