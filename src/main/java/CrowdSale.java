@@ -84,7 +84,7 @@ public class CrowdSale extends ReentrancyGuard implements Contract{
         require(!init, "Already initialized");
 
         // Create token, update token in contract and initialize contract
-        String preToken = Utils.deploy(new String[]{ "token" + BigInteger.valueOf(Block.timestamp()).toString() + symbol, "token"}, new Address("NULSd6Hgt3DMt33PKq1hHkFCRbQmbpFtrc4fi"), new String[]{name, symbol, initialAmount.toString(), String.valueOf(decimals)});
+        String preToken = Utils.deploy(new String[]{ "token" + BigInteger.valueOf(Block.timestamp()).toString() + symbol, "token"}, new Address("NULSd6HgkCacwJdk1a4HPrHerWdWr6N5D4ceo"), new String[]{name, symbol, initialAmount.toString(), String.valueOf(decimals), "NULSd6Hgmqgq924JD5aukswyrqrg6xjpTzH5w"});
         token           = new Address(preToken);
         init            = true;
     }
